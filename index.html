@@ -1,0 +1,456 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>Intro to FeatureLayer | Sample | ArcGIS Maps SDK for JavaScript 4.30</title>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+    <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" />
+    <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+/>
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.30/"></script>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+
+     
+    </style>
+
+    <script>
+      require(["esri/Map", "esri/views/MapView", "esri/layers/FeatureLayer", "esri/layers/TileLayer"], (Map, MapView, FeatureLayer, TileLayer) => {
+
+        const swiper = new Swiper('.swiper', {
+          // Optional parameters
+          direction: 'horizontal',
+          loop: true,
+
+          // If we need pagination
+          pagination: {
+            el: '.swiper-pagination',
+          },
+
+          // Navigation arrows
+          navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+          },
+
+          // And if we need scrollbar
+          scrollbar: {
+            el: '.swiper-scrollbar',
+          },
+        });
+        const map = new Map({
+          basemap: "hybrid"
+        });
+
+        const view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: [-88.5694, 47.1211],
+          zoom: 14
+
+          
+        });
+
+        /********************
+         * Add feature layer
+         ********************/
+
+        // CCHI Focal points
+        const pointsLayer = new FeatureLayer({
+          url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/CCHI_Viewsheds_Houghton_Points/FeatureServer"
+        });
+
+        map.add(pointsLayer);
+
+        // CCHI Focal points
+        const viewshedsLayer = new FeatureLayer({
+          url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/CCHI_Viewsheds_houghton/FeatureServer"
+        });
+
+      // Create an object to store tile layers
+      const tileLayers = {
+        map_1949: new TileLayer({
+          url: "https://portal1-geo.sabu.mtu.edu/server/rest/services/KeweenawHSDI/Kett_19496_FIPS/MapServer?f=jsapi",
+        }),
+        map_1900: new TileLayer({
+          url: "https://portal1-geo.sabu.mtu.edu/server/rest/services/KeweenawHSDI/KeTT_1900_FIPS/MapServer",
+        }),
+        map_1908: new TileLayer({
+          url: "https://portal1-geo.sabu.mtu.edu/server/rest/services/KeweenawHSDI/KeTT_1908_FIPS/MapServer",
+        }),
+        map_1917: new TileLayer({
+          url: "https://portal1-geo.sabu.mtu.edu/server/rest/services/KeweenawHSDI/KeTT_1917_FIPS/MapServer",    
+        }),
+         map_1928: new TileLayer({
+          url: "https://portal1-geo.sabu.mtu.edu/server/rest/services/KeweenawHSDI/KeTT_1928_FIPS/MapServer",    
+        }), 
+      };   
+
+        map.add(viewshedsLayer);
+
+        function changeMap(year) {
+          // Keep track of the currently active tile layers
+          let activeTileLayer = null;
+          // get variable from attributes for the map year string
+          const mapstr = "map_" + year;
+          console.log(mapstr);
+          // Remove the previously active tile layer, if any
+          if (activeTileLayer) {
+            map.remove(activeTileLayer);
+          }
+
+          // Retrieve the tile layer from the tileLayers object
+          const tileLayerToAdd = tileLayers[mapstr];
+
+          if (tileLayerToAdd) {
+            // Add the retrieved tile layer to the map
+            map.add(tileLayerToAdd, 0);
+            activeTileLayer = tileLayerToAdd; // Update the active layer
+          } else {
+            console.log("Tile layer not found for the given map year:", year);
+          }
+        }
+
+        pointsLayer.queryFeatures({
+            //query object
+            where: "1=1",
+            returnGeometry: false,
+            outFields: ["*"],
+          })
+          .then((data) => {
+            console.log(data.features);
+            const features = data.features;
+            const image_id = features[0].attributes.image_no;
+            //const mapYear = features[0].attributes.mapyear;
+            const imgUrl = "https://cchi-new.mtu.edu/system/files/2023-12/" + image_id + ".jpg"
+            //console.log(image_id, mapYear, imgUrl);
+
+             const swiperWrapper = document.querySelector('.swiper-wrapper');
+
+            features.forEach(feature => {
+                const image_id = feature.attributes.image_no;
+                const mapYear = feature.attributes.mapyear;
+                const imgUrl = "https://cchi-new.mtu.edu/system/files/2023-12/" + image_id + ".jpg";
+                console.log("image alt: " + image_id, "img url: " + imgUrl);
+                
+                // Create a new slide
+                const slide = document.createElement('div');
+                slide.classList.add('swiper-slide');
+                slide.innerHTML = `
+                    <div>
+                        <img src="${imgUrl}" alt="Image ${image_id}" loading="lazy">
+                        <p>Map Year: ${mapYear}</p>
+                    </div>
+                `;
+                // Append the slide to the swiper wrapper
+                swiperWrapper.appendChild(slide);
+              });
+          });
+
+          // listen for the swiper slide changes
+          swiper.on('slideChange', function (event) {
+            console.log(event);
+            // get the current image id from the alt text of each slide
+            var activeIndex = swiper.realIndex;
+            var activeSlide = document.querySelector(`.swiper-slide[data-swiper-slide-index="${activeIndex}"] img`);
+            var altText = activeSlide ? activeSlide.alt : 'No alt text available';           
+            console.log(altText);
+            // query the viewsheds layer for the alt text
+            viewshedsLayer.queryFeatures({            
+            where: "identifier =" + "'" + altText + "'",
+            returnGeometry: true,
+            outFields: ["*"],
+          })
+          .then((data) => {
+            console.log(data.features);
+            const mapyear = data.features[0].attributes.mapyear;
+            const extent = data.features[0].geometry.extent;
+            view.goTo({ center: extent.expand(1.3) }, { duration: 400 });
+            // filter the focal points and viewsheds by the current alt text
+            viewshedsLayer.definitionExpression = "identifier =" + "'" + altText + "'";
+            pointsLayer.definitionExpression = "identifier =" + "'" + altText + "'";
+            changeMap(mapyear);
+          });
+            });
+        
+      });
+    </script>
+  </head>
+
+  <body>
+    <ion-app>
+    <ion-content class="ion-padding">
+      <ion-split-pane when="xs" content-id="main">
+  <ion-menu content-id="main">
+    <ion-header>
+      <ion-toolbar color="tertiary">
+        <ion-title>Menu</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content> <div id="viewDiv"></div> </ion-content>
+  </ion-menu>
+
+  <div class="ion-page" id="main">
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Main View</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content>
+      <!-- Slider main container -->
+<div class="swiper">
+  <!-- Additional required wrapper -->
+  <div class="swiper-wrapper">
+     <!-- Slides -->
+          <div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2007-011-012-001.jpg" alt="No Neg 2007-011-012-001" loading="lazy" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-02.jpg" alt="No Neg 2008-01-16-02" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-03.jpg" alt="No Neg 2008-01-16-03" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-08.jpg" alt="No Neg 2008-01-16-08" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-22-01.jpg" alt="No Neg 2008-01-22-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-23-06.jpg" alt="No Neg 2008-01-23-06" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Nara 42-101.jpg" alt="Nara 42-101" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Nara 42-140.jpg" alt="Nara 42-140" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Nara 42-238.jpg" alt="Nara 42-238" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Nara 42-265.jpg" alt="Nara 42-265" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/RG77-105-10-06-02.jpg" alt="RG77-105-10-06-02" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2007-05-16-001.jpg" alt="No Neg 2007-05-16-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2007-07-15-001.jpg" alt="No Neg 2007-07-15-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2007-07-31-01.jpg" alt="No Neg 2007-07-31-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2007-07-31-02.jpg" alt="No Neg 2007-07-31-02" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2007-12-12-03.jpg" alt="No Neg 2007-12-12-03" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-04.jpg" alt="No Neg 2008-01-16-04" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-05.jpg" alt="No Neg 2008-01-16-05" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-06.jpg" alt="No Neg 2008-01-16-06" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-07.jpg" alt="No Neg 2008-01-16-07" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-17-01.jpg" alt="No Neg 2008-01-17-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-16-07.jpg" alt="No Neg 2008-01-16-07" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-22-04.jpg" alt="No Neg 2008-01-22-04" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-22-06.jpg" alt="No Neg 2008-01-22-06" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-23-05.jpg" alt="No Neg 2008-01-23-05" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-24-04.jpg" alt="No Neg 2008-01-24-04" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-04-02.jpg" alt="No Neg 2008-02-04-02" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-05-01.jpg" alt="No Neg 2008-02-05-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-05-03.jpg" alt="No Neg 2008-02-05-03" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-05-05.jpg" alt="No Neg 2008-02-05-05" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-05-06.jpg" alt="No Neg 2008-02-05-06" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-06-10.jpg" alt="No Neg 2008-02-06-10" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-06-12.jpg" alt="No Neg 2008-02-06-12" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-15-01.jpg" alt="No Neg 2008-02-15-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-20-05.jpg" alt="No Neg 2008-02-20-05" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-20-10.jpg" alt="No Neg 2008-02-20-10" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-02-21-09.jpg" alt="No Neg 2008-02-21-09" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-03-05-02.jpg" alt="No Neg 2008-03-05-02" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-03-05-07.jpg" alt="No Neg 2008-03-05-07" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-03-05-09.jpg" alt="No Neg 2008-03-05-09" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-23-04.jpg" alt="No Neg 2008-01-23-04" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/No Neg 2008-01-23-03.jpg" alt="No Neg 2008-01-23-03" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 00582.jpg" alt="MTU Neg 00582" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 00539.jpg" alt="MTU Neg 00539" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Book LD3328H3-242-1.jpg" alt="Book LD3328H3-242-1" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS015-MI-2-82.jpg" alt="MS015-MI-2-82" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-058-999-W782.jpg" alt="MS042-058-999-W782" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Book F572-S9-A7-pt 4-5.jpg" alt="Book F572-S9-A7-pt 4-5" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU014-08-01-06.jpg" alt="MTU014-08-01-06" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS050-12-21-01-F903.jpg" alt="MS050-12-21-01-F903" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU014-08-01-05.jpg" alt="MTU014-08-01-05" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU014-08-01-10.jpg" alt="MTU014-08-01-10" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU077-01-03-02532.jpg" alt="MTU077-01-03-02532" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU160-001-021.jpg" alt="MTU160-001-021" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU160-001-001.jpg" alt="MTU160-001-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU160-001-011.jpg" alt="MTU160-001-011" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU160-001-022.jpg" alt="MTU160-001-022" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU160-001-004.jpg" alt="MTU160-001-004" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-416.jpg" alt="MS042-05-53-416" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-400.jpg" alt="MS042-05-53-400" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-384.jpg" alt="MS042-05-53-384" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-383.jpg" alt="MS042-05-53-383" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-381.jpg" alt="MS042-05-53-381" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-352.jpg" alt="MS042-05-53-352" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 05155.jpg" alt="MTU Neg 05155" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-400-12-13-1988-01-06-01.jpg" alt="Acc-400-12-13-1988-01-06-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc 15-007-088.jpg" alt="Acc 15-007-088" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU059-004-005-022.jpg" alt="MTU059-004-005-022" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-280.jpg" alt="ACC 10-010-280" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-035A-013.jpg" alt="Acc-03-035A-013" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-00-008A-001.jpg" alt="Acc-00-008A-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC-98-016A-1998-08-21-3C-008.jpg" alt="ACC-98-016A-1998-08-21-3C-008" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-541-01-01-1991-001-008.jpg" alt="Acc-541-01-01-1991-001-008" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AJ-066.jpg" alt="Acc-01-054A-AJ-066" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-151.jpg" alt="ACC 10-010-151" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-15-026-01-27.jpg" alt="Acc-15-026-01-27" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC-22-03-60-04.jpg" alt="ACC-22-03-60-04" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-346.jpg" alt="MS042-05-53-346" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-330.jpg" alt="MS042-05-53-330" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-328.jpg" alt="MS042-05-53-328" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-326.jpg" alt="MS042-05-53-326" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-325.jpg" alt="MS042-05-53-325" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-05-53-324.jpg" alt="MS042-05-53-324" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-04-53-204.jpg" alt="MS042-04-53-204" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-04-53-203.jpg" alt="MS042-04-53-203" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-04-53-188.jpg" alt="MS042-04-53-188" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-04-53-184.jpg" alt="MS042-04-53-184" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-04-53-183.jpg" alt="MS042-04-53-183" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-016-03-14-1989-001.jpg" alt="Acc-016-03-14-1989-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-095D-001-022.jpg" alt="Acc-03-095D-001-022" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc 15-007-003.jpg" alt="Acc 15-007-003" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-035A-010.jpg" alt="Acc-03-035A-010" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-230.jpg" alt="ACC 10-010-230" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-541-01-01-1991-001-012.jpg" alt="Acc-541-01-01-1991-001-012" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-095D-001-002.jpg" alt="Acc-03-095D-001-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-231.jpg" alt="ACC 10-010-231" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-192.jpg" alt="ACC 10-010-192" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC-98-016A-1998-08-21-3C-004.jpg" alt="ACC-98-016A-1998-08-21-3C-004" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-035A-011.jpg" alt="Acc-03-035A-011" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-035A-017.jpg" alt="Acc-03-035A-017" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-130.jpg" alt="ACC 10-010-130" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC-98-016A-1998-08-21-3C-009.jpg" alt="ACC-98-016A-1998-08-21-3C-009" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-541-01-01-1991-001-005.jpg" alt="Acc-541-01-01-1991-001-005" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 239-5-6-1985-01-238.jpg" alt="ACC 239-5-6-1985-01-238" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-040.jpg" alt="ACC 10-010-040" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-16-12-07-1981-001.jpg" alt="Acc-16-12-07-1981-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC08-083A-007-003-001.jpg" alt="ACC08-083A-007-003-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-112.jpg" alt="ACC 10-010-112" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-16-9-26-1980-001.jpg" alt="Acc-16-9-26-1980-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 239-5-6-1985-01-235.jpg" alt="ACC 239-5-6-1985-01-235" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-400-12-13-1988-01-08-05.jpg" alt="Acc-400-12-13-1988-01-08-05" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-108.jpg" alt="ACC 10-010-108" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-541-01-01-1991-001-016.jpg" alt="Acc-541-01-01-1991-001-016" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-228.jpg" alt="ACC 10-010-228" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc 15-007-016.jpg" alt="Acc 15-007-016" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-035A-021.jpg" alt="Acc-03-035A-021" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AT-092-4.jpg" alt="Acc-01-054A-AT-092-4" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-541-01-01-1991-002-007.jpg" alt="Acc-541-01-01-1991-002-007" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-189.jpg" alt="ACC 10-010-189" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AJ-065.jpg" alt="Acc-01-054A-AJ-065" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-178.jpg" alt="2ACC 10-010-178" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC-10-016-022.jpg" alt="ACC-10-016-022" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AT-089-1.jpg" alt="Acc-01-054A-AT-089-1" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-051.jpg" alt="ACC 10-010-051" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-095D-001-006.jpg" alt="Acc-03-095D-001-006" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-03-035A-002.jpg" alt="Acc-03-035A-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-066.jpg" alt="ACC 10-010-066" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-014.jpg" alt="ACC 10-010-014" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AJ-067.jpg" alt="Acc-01-054A-AJ-067" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-105.jpg" alt="ACC 10-010-105" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-163.jpg" alt="ACC 10-010-163" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-073.jpg" alt="ACC 10-010-073" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-158.jpg" alt="ACC 10-010-158" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-159.jpg" alt="ACC 10-010-159" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC 10-010-038.jpg" alt="ACC 10-010-038" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc 08-026D.jpg" alt="Acc 08-026D" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS051-048-004-002.jpg" alt="MS051-048-004-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AG-007.jpg" alt="Acc-01-054A-AG-007" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-01-054A-AI-041.jpg" alt="Acc-01-054A-AI-041" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-063-Z-598D.jpg" alt="MS042-063-Z-598D" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-545.jpg" alt="MS042-006-053-545" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-039-T-61.jpg" alt="MS042-039-T-61" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS019-14-03-01.jpg" alt="MS019-14-03-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-04-53-212.jpg" alt="MS042-04-53-212" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS051-014-001-001.jpg" alt="MS051-014-001-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS619-02-01-03.jpg" alt="MS619-02-01-03" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS015-MI-2-180.jpg" alt="MS015-MI-2-180" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-034-999-G-139B.jpg" alt="MS042-034-999-G-139B" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS580-04-quincy6-001.jpg" alt="MS580-04-quincy6-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS580-04-1965-002.jpg" alt="MS580-04-1965-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS580-04-1965-001.jpg" alt="MS580-04-1965-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS503-MS02-4-32-01.jpg" alt="MS503-MS02-4-32-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS503-MS02-4-32-02.jpg" alt="MS503-MS02-4-32-02" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-017-261-035.jpg" alt="MS042-017-261-035" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/ACC-011-059-iA054.jpg" alt="ACC-011-059-iA054" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/NoNeg 2014-01-14-002.jpg" alt="NoNeg 2014-01-14-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU004-119-21647-43.jpg" alt="MTU004-119-21647-43" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU004-120-21988-23.jpg" alt="MTU004-120-21988-23" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU004-25-11-830218-16.jpg" alt="MTU004-25-11-830218-16" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU004-114-79-01.jpg" alt="MTU004-114-79-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 01328.jpg" alt="MTU Neg 01328" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 01329.jpg" alt="MTU Neg 01329" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 01189.jpg" alt="MTU Neg 01189" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/NoNeg 2013-12-09-003.jpg" alt="NoNeg 2013-12-09-003" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 01648.jpg" alt="MTU Neg 01648" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc-08-064D.jpg" alt="Acc-08-064D" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 05582.jpg" alt="MTU Neg 05582" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MTU Neg 03272.jpg" alt="MTU Neg 03272" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS054-10-08-002.jpg" alt="MS054-10-08-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS054-10-08-001.jpg" alt="MS054-10-08-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS447-01-MRRollingstock-001.jpg" alt="MS447-01-MRRollingstock-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-Z-595F.jpg" alt="MS042-999-Z-595F" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-Z-266A.jpg" alt="MS042-999-Z-266A" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-58-W-783B.jpg" alt="MS042-58-W-783B" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-U-307F.jpg" alt="MS042-999-U-307F" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-U-001A.jpg" alt="MS042-999-U-001A" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-T-449.jpg" alt="MS042-999-T-449" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-T-393.jpg" alt="MS042-999-T-393" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-T-391.jpg" alt="MS042-999-T-391" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-T-227.jpg" alt="MS042-999-T-227" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-T-025.jpg" alt="MS042-999-T-025" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-999-T-011.jpg" alt="MS042-999-T-011" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS827-05-01-04-002.jpg" alt="MS827-05-01-04-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS082-04-80-002.jpg" alt="MS082-04-80-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS082-04-80-001.jpg" alt="MS082-04-80-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-005-053-414.jpg" alt="MS042-005-053-414" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-005-053-417.jpg" alt="MS042-005-053-417" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-540.jpg" alt="MS042-006-053-540" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-539.jpg" alt="MS042-006-053-539" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-541.jpg" alt="MS042-006-053-541" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-053-415.jpg" alt="MS042-053-415" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS067-01-01.jpg" alt="MS067-01-01" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-063-999-Z606I.jpg" alt="MS042-063-999-Z606I" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-048-999-U576C.jpg" alt="MS042-048-999-U576C" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS051-044-004-001.jpg" alt="MS051-044-004-001" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-16-2-053-1057.jpg" alt="MS042-16-2-053-1057" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS015-MI-2-108.jpg" alt="MS015-MI-2-108" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-547.jpg" alt="MS042-006-053-547" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-551.jpg" alt="MS042-006-053-551" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-552.jpg" alt="MS042-006-053-552" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/NoNeg 2012-10-24-002.jpg" alt="NoNeg 2012-10-24-002" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/Acc 08-026D.jpg" alt="Acc 08-026D" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-T-73.jpg" alt="MS042-T-73" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/NoNeg 2012-08-30-004.jpg" alt="NoNeg 2012-08-30-004" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-560.jpg" alt="MS042-006-053-560" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-572.jpg" alt="MS042-006-053-572" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-610.jpg" alt="MS042-006-053-610" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-006-053-624.jpg" alt="MS042-006-053-624" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-007-053-740.jpg" alt="MS042-007-053-740" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/MS042-007-053-852.jpg" alt="MS042-007-053-852" loading="lazy"></div>
+<div class="swiper-slide"><img src="https://cchi-new.mtu.edu/system/files/2023-12/NoNeg 2012-08-17-002.jpg" alt="NoNeg 2012-08-17-002" loading="lazy"></div>
+  </div>
+  <!-- If we need pagination -->
+  <div class="swiper-pagination"></div>
+
+  <!-- If we need navigation buttons -->
+  <div class="swiper-button-prev"></div>
+  <div class="swiper-button-next"></div>
+
+  <!-- If we need scrollbar -->
+  <div class="swiper-scrollbar"></div>
+</div>
+     </ion-content>
+  </div>
+</ion-split-pane>
+
+<style>
+  ion-split-pane {
+    --side-width: 50%;
+    --side-max-width: 50%;
+
+    --border: 1px dashed #b3baff;
+  }
+</style>
+
+    </ion-content>
+  </ion-app>
+  </body>
+</html>
